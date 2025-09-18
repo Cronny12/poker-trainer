@@ -1,7 +1,7 @@
 # poker-trainer
 Features:
-Hand Simulator / Visualizer --> Input hole cards + community cards
-Run Monte Carlo simulations for win/tie/loss probabilities
+Hand Simulator / Visualizer --> Input hole cards + community cards manually.
+Run Monte Carlo simulations for win/tie/loss probabilities.
 Interactive charts for hand equity
 
 
