@@ -1,21 +1,87 @@
-# poker-trainer
-Features:
-Hand Simulator / Visualizer --> Input hole cards + community cards manually.
-Run Monte Carlo simulations for win/tie/loss probabilities.
-Interactive charts for hand equity
+# Poker Trainer Monorepo
 
+Full-stack poker training app scaffold with:
+- `backend/`: Java 17 + Spring Boot REST API
+- `frontend/`: React (JSX) + Tailwind CSS + Vite
 
-Poker Bot Trainer:
-Play against a simple rule-based bot (tight-aggressive strategy)
-Practice making decisions in real hands
+## Product flow implemented
+- Landing page -> Sign in/Register -> Authenticated app home
+- Home options:
+  - Brain teaser
+  - Free daily chips
+  - Start match
+  - View profile
+  - Edit profile
+- Daily chips claim endpoint and UI
+- Daily brain teaser + streak-based chip rewards
+- 9-max bot match setup (you + 8 bots)
+  - 10 strategy types
+  - Per-seat strategy selection or random fill
+- Match simulations do not deduct chips
+- Win/loss history logging
 
+## Tech stack
+- Backend: Java 17, Spring Boot 3, Maven
+- Frontend: Node.js, React, JSX, Tailwind CSS, Vite
 
-Future: upgrade bot with reinforcement learning
-Decision Journal
-Log tricky hands from your own games
-Tag decisions (bluff, call, fold, raise)
-Dashboard showing stats & patterns in your play
+## Local development
 
-the gernal outline i want for this web app is:
-a user loads up the website and then logs in. once they log in they have access to their balance/chips. they receive a certain amount of chips everyday for free. the user can solve brain teasers to get more chips if they want. each day they log in and correctly answer a brain teaser they build upon their streak and the higher their streak the more chips they are awarded upon completion of the brain teaser. 
-the user can play a game against bots. the user can select what play style each of the bots have. the max game is 9 players. the user and 8 bots. there are going to be 10 different strategies to choose from and the user can select each bot and their play style. or if they want a randomised one they can select a random amount of each play styles. these games against a bot will not reduce their chip stack but there is a log/record of their wins and losses.
+### 1) Backend
+```bash
+cd backend
+mvn spring-boot:run
+```
+API default: `http://localhost:8080/api`
+
+### 2) Frontend
+```bash
+cd frontend
+cp .env.example .env.local
+npm install
+npm run dev
+```
+Frontend default: `http://localhost:5173`
+
+## Environment variables
+
+### Frontend
+- `VITE_API_BASE_URL` (default `http://localhost:8080/api`)
+
+### Backend
+- `APP_CORS_ORIGINS` (optional comma-separated origins)
+
+## API overview
+- Auth:
+  - `POST /api/auth/register`
+  - `POST /api/auth/login`
+  - `GET /api/auth/me`
+- Chips:
+  - `GET /api/chips/balance`
+  - `POST /api/chips/daily-claim`
+- Brain teaser:
+  - `GET /api/brain-teaser/today`
+  - `POST /api/brain-teaser/submit`
+- Match:
+  - `GET /api/match/strategies`
+  - `POST /api/match/start`
+  - `GET /api/match/history`
+- Profile:
+  - `GET /api/profile`
+  - `PUT /api/profile`
+
+## Vercel deployment
+
+Use Vercel for `frontend/` and deploy backend separately (Render/Railway/Fly/etc).
+
+### Frontend on Vercel
+1. Import this repo in Vercel.
+2. Set the project Root Directory to `frontend`.
+3. Build command: `npm run build`.
+4. Output directory: `dist`.
+5. Set `VITE_API_BASE_URL` to your deployed backend API URL (e.g. `https://your-api.example.com/api`).
+
+`frontend/vercel.json` already includes SPA rewrites.
+
+## Notes
+- Backend persistence is currently in-memory for rapid prototyping.
+- Passwords are SHA-256 hashed for demo purposes; for production, use a hardened password hashing function (e.g. bcrypt/argon2) and a real database.
