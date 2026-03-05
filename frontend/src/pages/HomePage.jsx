@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 const cards = [
   { title: 'Brain Teaser', to: '/app/brain-teaser', body: 'Solve today’s puzzle and push your streak for bigger rewards.' },
   { title: 'Free Daily Chips', to: '/app/daily-chips', body: 'Claim your daily free chip drop once every day.' },
-  { title: 'Start Match', to: '/app/match', body: 'Configure 8 bots with custom styles and start a training match.' },
+  { title: 'Start Match', to: '/app/match', body: 'Configure 5 bots with custom styles and launch a 6-max table.' },
   { title: 'View Profile', to: '/app/profile', body: 'Review your stats, streaks, and chip total.' },
   { title: 'Edit Profile', to: '/app/profile/edit', body: 'Update your display name and bio.' }
 ];
@@ -26,7 +26,7 @@ export default function HomePage() {
       })
       .catch(() => null);
     refreshMe().catch(() => null);
-  }, [token, refreshMe]);
+  }, [token]);
 
   return (
     <div className="space-y-6">

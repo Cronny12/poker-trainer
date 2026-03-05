@@ -6,6 +6,7 @@ Full-stack poker training app scaffold with:
 
 ## Product flow implemented
 - Landing page -> Sign in/Register -> Authenticated app home
+- Includes a no-account `Demo mode` (local browser data) so you can enter the app without backend connectivity
 - Home options:
   - Brain teaser
   - Free daily chips
@@ -17,8 +18,8 @@ Full-stack poker training app scaffold with:
 - 9-max bot match setup (you + 8 bots)
   - 10 strategy types
   - Per-seat strategy selection or random fill
-- Match simulations do not deduct chips
-- Win/loss history logging
+- Live table route for playable match hands
+- Win/loss history logged after full table result (bust or win)
 
 ## Tech stack
 - Backend: Java 17, Spring Boot 3, Maven
@@ -64,6 +65,7 @@ Frontend default: `http://localhost:5173`
 - Match:
   - `GET /api/match/strategies`
   - `POST /api/match/start`
+  - `POST /api/match/record`
   - `GET /api/match/history`
 - Profile:
   - `GET /api/profile`

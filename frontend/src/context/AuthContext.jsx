@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { authApi } from '../api/services';
 
 const AuthContext = createContext(null);
@@ -44,37 +44,44 @@ export function AuthProvider({ children }) {
     };
   }, [token]);
 
-  const login = async (identifier, password) => {
+  const login = useCallback(async (identifier, password) => {
     const response = await authApi.login({ identifier, password });
     setToken(response.token);
     localStorage.setItem(TOKEN_KEY, response.token);
     setUser(response.user);
-  };
+  }, []);
 
-  const register = async (username, email, password) => {
+  const register = useCallback(async (username, email, password) => {
     const response = await authApi.register({ username, email, password });
     setToken(response.token);
     localStorage.setItem(TOKEN_KEY, response.token);
     setUser(response.user);
-  };
+  }, []);
 
-  const logout = () => {
+  const enterDemo = useCallback(async (nameHint) => {
+    const response = await authApi.loginDemo(nameHint);
+    setToken(response.token);
+    localStorage.setItem(TOKEN_KEY, response.token);
+    setUser(response.user);
+  }, []);
+
+  const logout = useCallback(() => {
     setToken('');
     setUser(null);
     localStorage.removeItem(TOKEN_KEY);
-  };
+  }, []);
 
-  const refreshMe = async () => {
+  const refreshMe = useCallback(async () => {
     if (!token) {
       return;
     }
     const response = await authApi.me(token);
     setUser(response);
-  };
+  }, [token]);
 
   const value = useMemo(
-    () => ({ token, user, loading, login, register, logout, refreshMe }),
-    [token, user, loading]
+    () => ({ token, user, loading, login, register, enterDemo, logout, refreshMe }),
+    [token, user, loading, login, register, enterDemo, logout, refreshMe]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

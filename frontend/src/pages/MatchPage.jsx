@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageCard from '../components/PageCard';
 import { matchApi } from '../api/services';
 import { useAuth } from '../context/AuthContext';
 
-const seats = [2, 3, 4, 5, 6, 7, 8, 9];
+const seats = [2, 3, 4, 5, 6];
+const MATCH_SETUP_KEY = 'poker_trainer_match_setup';
 
 export default function MatchPage() {
-  const { token, refreshMe } = useAuth();
+  const { token } = useAuth();
+  const navigate = useNavigate();
   const [strategies, setStrategies] = useState([]);
   const [history, setHistory] = useState([]);
   const [assignments, setAssignments] = useState(() =>
@@ -16,9 +19,8 @@ export default function MatchPage() {
     }, {})
   );
   const [randomizeUnassigned, setRandomizeUnassigned] = useState(true);
-  const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -30,6 +32,12 @@ export default function MatchPage() {
       .catch((err) => setError(err.message || 'Failed to load match setup'))
       .finally(() => setLoading(false));
   }, [token]);
+
+  const strategyById = useMemo(() => {
+    const mapping = new Map();
+    strategies.forEach((strategy) => mapping.set(strategy.id, strategy));
+    return mapping;
+  }, [strategies]);
 
   const selectedCount = useMemo(
     () => Object.values(assignments).filter((strategyId) => Boolean(strategyId)).length,
@@ -50,28 +58,44 @@ export default function MatchPage() {
     setRandomizeUnassigned(true);
   };
 
-  const handleStartMatch = async () => {
-    setSubmitting(true);
+  const randomStrategyId = () => {
+    if (!strategies.length) {
+      return 'balanced-grinder';
+    }
+    const index = Math.floor(Math.random() * strategies.length);
+    return strategies[index].id;
+  };
+
+  const handleStartMatch = () => {
+    setStarting(true);
     setError('');
 
-    const botAssignments = seats
-      .filter((seat) => assignments[seat])
-      .map((seat) => ({ seat, strategyId: assignments[seat] }));
-
     try {
-      const response = await matchApi.start(token, {
-        botAssignments,
-        randomizeUnassigned
+      const lineup = seats.map((seat) => {
+        const selectedId = assignments[seat];
+        const strategyId =
+          selectedId || (randomizeUnassigned ? randomStrategyId() : 'balanced-grinder');
+
+        const strategy =
+          strategyById.get(strategyId) || strategyById.get('balanced-grinder') || strategies[0];
+
+        if (!strategy) {
+          throw new Error('No bot strategies available.');
+        }
+
+        return {
+          seat,
+          strategyId: strategy.id,
+          strategyName: strategy.name
+        };
       });
 
-      setResult(response);
-      const nextHistory = await matchApi.history(token);
-      setHistory(nextHistory);
-      await refreshMe();
+      sessionStorage.setItem(MATCH_SETUP_KEY, JSON.stringify({ lineup }));
+      navigate('/app/match/table', { state: { lineup } });
     } catch (err) {
-      setError(err.message || 'Could not start match');
+      setError(err.message || 'Could not start match table');
     } finally {
-      setSubmitting(false);
+      setStarting(false);
     }
   };
 
@@ -82,11 +106,11 @@ export default function MatchPage() {
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
       <PageCard
-        title="Start Bot Match"
-        subtitle="9-max table: you + 8 bots. Choose each seat strategy or randomize the remaining seats."
+        title="Start 6-Max Bot Match"
+        subtitle="6 seats total: you + 5 bots. Choose each bot strategy, then launch the live table."
       >
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <span className="rounded-full border border-white/20 px-3 py-1 text-sm">Manual bots selected: {selectedCount}/8</span>
+          <span className="rounded-full border border-white/20 px-3 py-1 text-sm">Manual bots selected: {selectedCount}/5</span>
           <button
             type="button"
             onClick={handleRandomAll}
@@ -129,26 +153,18 @@ export default function MatchPage() {
         <button
           type="button"
           onClick={handleStartMatch}
-          disabled={submitting}
+          disabled={starting}
           className="mt-5 rounded-xl bg-velvet-green-600 px-6 py-3 font-semibold hover:bg-velvet-green-500 disabled:opacity-70"
         >
-          {submitting ? 'Running match simulation...' : 'Start Match'}
+          {starting ? 'Launching table...' : 'Start Match'}
         </button>
-
-        {result ? (
-          <div className="mt-5 rounded-xl border border-white/15 bg-white/5 p-4">
-            <p className="font-semibold">{result.summary}</p>
-            <p className="mt-2 text-sm">Result: {result.userWon ? 'Win' : 'Loss'}</p>
-            <p className="text-sm">Record: {result.wins}W / {result.losses}L</p>
-          </div>
-        ) : null}
 
         {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
       </PageCard>
 
-      <PageCard title="Match History" subtitle="Training games do not reduce chip balance.">
+      <PageCard title="Match History" subtitle="Logged after full table result (you bust or you win).">
         {history.length === 0 ? (
-          <p className="text-sm text-white/70">No matches yet. Start one to build your record.</p>
+          <p className="text-sm text-white/70">No completed matches yet.</p>
         ) : (
           <div className="space-y-3">
             {history.slice(0, 10).map((match, index) => (

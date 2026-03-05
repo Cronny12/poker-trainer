@@ -1,6 +1,7 @@
 package com.pokertrainer.backend.controller;
 
 import com.pokertrainer.backend.dto.MatchStartResponse;
+import com.pokertrainer.backend.dto.RecordMatchRequest;
 import com.pokertrainer.backend.dto.StartMatchRequest;
 import com.pokertrainer.backend.model.BotStrategy;
 import com.pokertrainer.backend.model.MatchRecord;
@@ -34,6 +35,14 @@ public class MatchController {
         @Valid @RequestBody StartMatchRequest request
     ) {
         return appService.startMatch(authorizationHeader, request);
+    }
+
+    @PostMapping("/record")
+    public MatchStartResponse recordMatchResult(
+        @RequestHeader("Authorization") String authorizationHeader,
+        @Valid @RequestBody RecordMatchRequest request
+    ) {
+        return appService.recordMatchResult(authorizationHeader, request.userWon(), request.botStrategies());
     }
 
     @GetMapping("/history")

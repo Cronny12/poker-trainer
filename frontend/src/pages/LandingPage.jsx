@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const features = [
   {
@@ -11,10 +12,10 @@ const features = [
   },
   {
     title: 'Bot Match Trainer',
-    description: 'Play 9-max tables with up to 8 bots and choose each bot strategy.'
+    description: 'Play 6-max tables with 5 bots and choose each bot strategy.'
   },
   {
-    title: '10 Play Styles',
+    title: 'Custom Bot Styles',
     description: 'Mix nit, LAG, GTO-lite and more. Manual seat setup or randomized lineups.'
   },
   {
@@ -28,6 +29,14 @@ const features = [
 ];
 
 export default function LandingPage() {
+  const { enterDemo } = useAuth();
+  const navigate = useNavigate();
+
+  const handleDemo = async () => {
+    await enterDemo('Guest');
+    navigate('/app');
+  };
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-velvet-surface text-white">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(47,160,112,0.25),transparent_45%),radial-gradient(circle_at_90%_20%,rgba(201,54,90,0.22),transparent_42%)]" />
@@ -39,6 +48,13 @@ export default function LandingPage() {
             <Link to="/login" className="rounded-full border border-white/25 px-5 py-2.5 text-sm font-semibold hover:bg-white/10">
               Sign in
             </Link>
+            <button
+              type="button"
+              onClick={handleDemo}
+              className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/20"
+            >
+              Demo
+            </button>
             <Link
               to="/register"
               className="rounded-full bg-velvet-red-600 px-5 py-2.5 text-sm font-semibold shadow-[0_0_30px_rgba(161,36,71,0.35)] hover:bg-velvet-red-500"

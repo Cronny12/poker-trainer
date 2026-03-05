@@ -235,6 +235,26 @@ public class AppService {
         return new MatchStartResponse(userWon, summary, now, strategyNames, user.getWins(), user.getLosses());
     }
 
+    public MatchStartResponse recordMatchResult(String authorizationHeader, boolean userWon, List<String> botStrategies) {
+        UserAccount user = requireUser(authorizationHeader);
+
+        if (userWon) {
+            user.incrementWins();
+        } else {
+            user.incrementLosses();
+        }
+
+        Instant now = Instant.now();
+        List<String> safeStrategies = botStrategies == null ? List.of() : botStrategies;
+        user.getMatchHistory().add(0, new MatchRecord(now, userWon, safeStrategies));
+
+        String summary = userWon
+            ? "You beat the bot table. No chips risked, stats updated."
+            : "Bots won this round. No chips were deducted.";
+
+        return new MatchStartResponse(userWon, summary, now, safeStrategies, user.getWins(), user.getLosses());
+    }
+
     public List<MatchRecord> matchHistory(String authorizationHeader) {
         UserAccount user = requireUser(authorizationHeader);
         return user.getMatchHistory();
