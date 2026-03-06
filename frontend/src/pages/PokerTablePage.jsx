@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import ActionPanel from '../components/ActionPanel';
 import PokerTableCanvas from '../components/PokerTableCanvas';
@@ -6,14 +6,18 @@ import PageCard from '../components/PageCard';
 import { useAuth } from '../context/AuthContext';
 import {
   advanceToNextHand,
+  applyBotAction,
   applyPlayerAction,
   createMatch,
+  evaluateSeven,
   getLegalActions
 } from '../game/engine';
 import { matchApi } from '../api/services';
 
 const MATCH_SETUP_KEY = 'poker_trainer_match_setup';
 const SIX_MAX_SEATS = [2, 3, 4, 5, 6];
+const PLAYER_ACTION_SECONDS = 15;
+const BOT_MAX_DELAY_MS = 1000;
 
 const STYLE_MAP = {
   'tight-aggressive': { style: 'Tight', difficulty: 'Hard' },
@@ -56,6 +60,12 @@ export default function PokerTablePage() {
   const [recorded, setRecorded] = useState(false);
   const [recordingError, setRecordingError] = useState('');
   const [actionError, setActionError] = useState('');
+  const [playerClock, setPlayerClock] = useState(PLAYER_ACTION_SECONDS);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const tableHostRef = useRef(null);
+  const botTimerRef = useRef(null);
+  const playerTimerRef = useRef(null);
 
   useEffect(() => {
     if (!lineup.length) {
@@ -78,6 +88,7 @@ export default function PokerTablePage() {
       startingStack: 2000,
       smallBlind: 10,
       bigBlind: 20,
+      autoRunBots: false,
       seed: Date.now(),
       bots
     };
@@ -118,7 +129,19 @@ export default function PokerTablePage() {
     };
   }, [game, recorded, lineup, token, refreshMe]);
 
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+    };
+  }, []);
+
   const actor = game?.actionIndex >= 0 ? game.players[game.actionIndex] : null;
+  const heroTurn = Boolean(game && !game.handComplete && !game.matchComplete && actor?.isHuman);
 
   const legal = useMemo(() => {
     if (!game || game.handComplete || game.matchComplete || !actor?.isHuman) {
@@ -149,6 +172,79 @@ export default function PokerTablePage() {
     return toTableView(game);
   }, [game]);
 
+  useEffect(() => {
+    if (!game || game.handComplete || game.matchComplete || heroTurn || game.actionIndex < 0) {
+      if (botTimerRef.current) {
+        clearTimeout(botTimerRef.current);
+        botTimerRef.current = null;
+      }
+      return;
+    }
+
+    const acting = game.players[game.actionIndex];
+    if (!acting || acting.isHuman) {
+      return;
+    }
+
+    const delay = Math.floor(Math.random() * (BOT_MAX_DELAY_MS + 1));
+
+    botTimerRef.current = setTimeout(() => {
+      setGame((previous) => applyBotAction(previous));
+    }, delay);
+
+    return () => {
+      if (botTimerRef.current) {
+        clearTimeout(botTimerRef.current);
+        botTimerRef.current = null;
+      }
+    };
+  }, [game, heroTurn]);
+
+  useEffect(() => {
+    if (playerTimerRef.current) {
+      clearInterval(playerTimerRef.current);
+      playerTimerRef.current = null;
+    }
+
+    if (!heroTurn || !game) {
+      setPlayerClock(PLAYER_ACTION_SECONDS);
+      return;
+    }
+
+    const deadline = Date.now() + (PLAYER_ACTION_SECONDS * 1000);
+    setPlayerClock(PLAYER_ACTION_SECONDS);
+
+    playerTimerRef.current = setInterval(() => {
+      const remainingMs = deadline - Date.now();
+      const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+      setPlayerClock(remainingSeconds);
+
+      if (remainingMs <= 0) {
+        if (playerTimerRef.current) {
+          clearInterval(playerTimerRef.current);
+          playerTimerRef.current = null;
+        }
+
+        setActionError('Time expired. Auto action applied.');
+
+        setGame((previous) => {
+          const fallbackAction = timeoutAction(previous);
+          if (!fallbackAction) {
+            return previous;
+          }
+          return applyPlayerAction(previous, fallbackAction);
+        });
+      }
+    }, 200);
+
+    return () => {
+      if (playerTimerRef.current) {
+        clearInterval(playerTimerRef.current);
+        playerTimerRef.current = null;
+      }
+    };
+  }, [heroTurn, game?.handNumber, game?.stage, game?.actionIndex]);
+
   if (!game || !tableView) {
     return <PageCard title="Poker Table">Loading live table...</PageCard>;
   }
@@ -167,10 +263,25 @@ export default function PokerTablePage() {
     setActionError('');
   };
 
-  const heroTurn = !game.handComplete && !game.matchComplete && actor?.isHuman;
+  const handleToggleFullscreen = async () => {
+    const host = tableHostRef.current;
+    if (!host) {
+      return;
+    }
+
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await host.requestFullscreen();
+      }
+    } catch {
+      setActionError('Fullscreen mode is not available in this browser.');
+    }
+  };
 
   return (
-    <div className="space-y-5 pb-56">
+    <div className="space-y-5 pb-10">
       <PageCard
         title="6-Max Live Hold'em"
         subtitle="Texas Hold'em simulator with real betting streets, seat markers, and showdown payouts."
@@ -183,7 +294,55 @@ export default function PokerTablePage() {
           <InfoPill label="Current Bet" value={game.currentBet} />
         </div>
 
-        <PokerTableCanvas table={tableView} animationKey={animationKey} />
+        <div ref={tableHostRef} className="relative">
+          <PokerTableCanvas
+            table={tableView}
+            animationKey={animationKey}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={handleToggleFullscreen}
+            actionArea={
+              heroTurn ? (
+                <ActionPanel
+                  legal={legal}
+                  onAction={handleAction}
+                  disabled={false}
+                  timeRemaining={playerClock}
+                  tableState={{ pot: game.pot, currentBet: game.currentBet }}
+                />
+              ) : (
+                <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
+                  <span className="rounded-full border border-white/20 bg-black/45 px-4 py-2 font-semibold text-white/90 backdrop-blur">
+                    {game.matchComplete
+                      ? 'Match complete'
+                      : game.handComplete
+                        ? 'Hand complete'
+                        : `${actor?.name || 'Bot'} is thinking...`}
+                  </span>
+
+                  {game.handComplete && !game.matchComplete ? (
+                    <button
+                      type="button"
+                      onClick={handleNextHand}
+                      className="rounded-full border border-emerald-300/50 bg-emerald-500/25 px-4 py-2 text-sm font-semibold text-emerald-50 hover:bg-emerald-500/35"
+                    >
+                      Deal Next Hand
+                    </button>
+                  ) : null}
+
+                  {game.matchComplete ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/app/match')}
+                      className="rounded-full border border-rose-300/50 bg-rose-500/25 px-4 py-2 text-sm font-semibold text-rose-50 hover:bg-rose-500/35"
+                    >
+                      Back To Match Setup
+                    </button>
+                  ) : null}
+                </div>
+              )
+            }
+          />
+        </div>
       </PageCard>
 
       <PageCard title="Hand Log" subtitle="Most recent table events and outcomes.">
@@ -194,61 +353,39 @@ export default function PokerTablePage() {
         </div>
       </PageCard>
 
-      <div className="fixed bottom-3 left-0 right-0 z-40 px-3 sm:px-6">
-        <div className="mx-auto flex w-full max-w-6xl justify-center lg:justify-start">
-          <div className="w-full max-w-2xl">
-            {heroTurn ? (
-              <ActionPanel
-                legal={legal}
-                onAction={handleAction}
-                disabled={false}
-                tableState={{ pot: game.pot, currentBet: game.currentBet }}
-              />
-            ) : (
-              <div className="rounded-2xl border border-white/20 bg-[#0d1220]/92 p-4 text-sm text-white/85 shadow-2xl backdrop-blur-xl">
-                <p>
-                  {game.matchComplete
-                    ? 'Match complete. Result is being logged.'
-                    : game.handComplete
-                      ? 'Hand complete. Deal next hand when ready.'
-                      : 'Bots are acting...'}
-                </p>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {game.handComplete && !game.matchComplete ? (
-                    <button
-                      type="button"
-                      onClick={handleNextHand}
-                      className="rounded-xl bg-velvet-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-velvet-green-500"
-                    >
-                      Deal Next Hand
-                    </button>
-                  ) : null}
-
-                  {game.matchComplete ? (
-                    <button
-                      type="button"
-                      onClick={() => navigate('/app/match')}
-                      className="rounded-xl bg-velvet-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-velvet-red-500"
-                    >
-                      Back To Match Setup
-                    </button>
-                  ) : null}
-                </div>
-
-                {recorded && game.matchComplete ? (
-                  <p className="mt-2 text-sm text-emerald-200">Match result logged.</p>
-                ) : null}
-              </div>
-            )}
-
-            {actionError ? <p className="mt-2 text-sm text-rose-300">{actionError}</p> : null}
-            {recordingError ? <p className="mt-2 text-sm text-rose-300">{recordingError}</p> : null}
-          </div>
-        </div>
-      </div>
+      {actionError ? <p className="text-sm text-rose-300">{actionError}</p> : null}
+      {recordingError ? <p className="text-sm text-rose-300">{recordingError}</p> : null}
+      {recorded && game.matchComplete ? <p className="text-sm text-emerald-200">Match result logged.</p> : null}
     </div>
   );
+}
+
+function timeoutAction(game) {
+  if (!game || game.handComplete || game.matchComplete || game.actionIndex < 0) {
+    return null;
+  }
+
+  const actor = game.players[game.actionIndex];
+  if (!actor?.isHuman) {
+    return null;
+  }
+
+  const legal = getLegalActions(game, game.actionIndex);
+
+  if (legal.available.includes('check')) {
+    return { type: 'check' };
+  }
+  if (legal.available.includes('fold')) {
+    return { type: 'fold' };
+  }
+  if (legal.available.includes('call')) {
+    return { type: 'call' };
+  }
+  if (legal.available.includes('all-in')) {
+    return { type: 'all-in' };
+  }
+
+  return null;
 }
 
 function InfoPill({ label, value }) {
@@ -271,14 +408,30 @@ function toTableView(game) {
   const winnerSet = new Set(winnerIds);
   const primaryWinnerId = winnerIds[0] || '';
   const primaryWinner = game.players.find((player) => player.id === primaryWinnerId);
+  const winnerLabel = winnerSet.has('hero')
+    ? 'YOU WIN'
+    : primaryWinner?.name
+      ? `${primaryWinner.name.toUpperCase()} WON`
+      : 'WIN';
+  const streetBetTotal = game.players.reduce((sum, player) => sum + (player.currentBet || 0), 0);
+  const displayPot = Math.max(0, game.pot - streetBetTotal);
+  const hero = game.players.find((player) => player.isHuman);
+  const visibleBoard = visibleCommunityCards(game, showdown).filter(Boolean);
+  const heroCards = hero?.holeCards || [];
+  const heroHandName = heroCards.length + visibleBoard.length >= 5
+    ? evaluateSeven([...heroCards, ...visibleBoard]).name
+    : 'No made hand yet';
 
   return {
     pot: game.pot,
+    displayPot,
+    streetBetTotal,
     stage: game.stage,
     stageLabel: formatStage(game.stage),
+    heroHandName,
     communityCards: visibleCommunityCards(game, showdown),
     showWinnerOverlay: showdown && winnerIds.length > 0,
-    winnerLabel: winnerSet.has('hero') ? 'YOU WIN' : 'WIN',
+    winnerLabel,
     winnerSeat: primaryWinner?.seat || 1,
     players: [...game.players]
       .sort((a, b) => a.seat - b.seat)

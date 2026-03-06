@@ -33,6 +33,7 @@ export function createDefaultConfig() {
     startingStack: 2000,
     smallBlind: 10,
     bigBlind: 20,
+    autoRunBots: true,
     seed: 12345,
     bots: [
       { seat: 2, name: 'Bot 1', style: 'Balanced', difficulty: 'Medium' },
@@ -72,6 +73,7 @@ export function normalizeConfig(input) {
     startingStack,
     smallBlind: selectedBlind ? selectedBlind.small : defaults.smallBlind,
     bigBlind: selectedBlind ? selectedBlind.big : defaults.bigBlind,
+    autoRunBots: input?.autoRunBots !== false,
     seed,
     bots
   };
@@ -112,6 +114,7 @@ export function createMatch(configInput) {
 
   const match = {
     config,
+    autoRunBots: config.autoRunBots !== false,
     rngSeed: normalizeSeed(config.seed),
     matchId: Date.now(),
     handNumber: 0,
@@ -188,7 +191,7 @@ export function startNewHand(matchInput) {
   state.pendingToAct = orderedCanActFrom(state.players, firstToAct);
   state.actionIndex = state.pendingToAct.length ? state.pendingToAct[0] : -1;
 
-  return runBotsUntilHuman(state);
+  return state.autoRunBots ? runBotsUntilHuman(state) : state;
 }
 
 export function getLegalActions(match, playerIndex = match.actionIndex) {
@@ -265,7 +268,23 @@ export function applyPlayerAction(matchInput, actionInput) {
   }
 
   const result = applyActionCore(state, actorIndex, actionInput);
-  return runBotsUntilHuman(result);
+  return result.autoRunBots ? runBotsUntilHuman(result) : result;
+}
+
+export function applyBotAction(matchInput) {
+  const state = clone(matchInput);
+
+  if (state.matchComplete || state.handComplete || state.actionIndex < 0) {
+    return state;
+  }
+
+  const actor = state.players[state.actionIndex];
+  if (!actor || actor.isHuman || actor.folded || actor.allIn || actor.stack <= 0) {
+    return state;
+  }
+
+  const action = decideBotAction(state, state.actionIndex);
+  return applyActionCore(state, state.actionIndex, action);
 }
 
 export function computeSidePots(players) {
