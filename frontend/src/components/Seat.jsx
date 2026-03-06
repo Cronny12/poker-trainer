@@ -1,7 +1,13 @@
 import Card from './Card';
 import ChipBet from './ChipBet';
 
-export default function Seat({ player, layout, animationKey }) {
+export default function Seat({
+  player,
+  layout,
+  animationKey,
+  heroTimerProgress = 1,
+  heroHandName = ''
+}) {
   const activeTone = player.isTurn ? 'ring-2 ring-emerald-300 shadow-[0_0_28px_rgba(74,222,128,0.45)]' : '';
   const winnerTone = player.isWinner ? 'ring-2 ring-amber-300/80 shadow-[0_0_26px_rgba(251,191,36,0.35)]' : '';
 
@@ -29,6 +35,18 @@ export default function Seat({ player, layout, animationKey }) {
           <p className="mt-1 text-[11px] font-bold leading-none text-sky-300">${player.stack.toLocaleString()}</p>
           <p className="mt-1 text-[9px] uppercase tracking-[0.13em] text-white/60">{stateLabel(player)}</p>
         </div>
+
+        {player.isHero ? (
+          <>
+            <div className="mt-1.5 h-1 w-[108px] overflow-hidden rounded-full border border-white/25 bg-black/70">
+              <div
+                className={`h-full ${heroTimerProgress <= 0.3 ? 'bg-rose-400' : 'bg-emerald-400'}`}
+                style={{ width: `${Math.max(0, Math.min(1, heroTimerProgress)) * 100}%` }}
+              />
+            </div>
+            <p className="mt-1 max-w-[140px] text-center text-[10px] font-semibold text-amber-200/95">{heroHandName}</p>
+          </>
+        ) : null}
 
         {(player.isSmallBlind || player.isBigBlind) && !player.isDealer ? (
           <div className="mt-1 inline-flex gap-1">

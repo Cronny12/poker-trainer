@@ -4,8 +4,7 @@ export default function ActionPanel({
   legal,
   onAction,
   disabled,
-  tableState = { pot: 0, currentBet: 0 },
-  timeRemaining = 15
+  tableState = { pot: 0, currentBet: 0 }
 }) {
   const [amount, setAmount] = useState(0);
 
@@ -61,7 +60,6 @@ export default function ActionPanel({
   }, [mode, sliderBounds.min, sliderBounds.max, tableState.currentBet, tableState.pot]);
 
   const showSizeControls = Boolean(mode) && sliderBounds.max >= sliderBounds.min && sliderBounds.max > 0;
-  const timerProgress = Math.max(0, Math.min(1, timeRemaining / 15));
   const clampToBounds = (value) => {
     if (!Number.isFinite(value)) {
       return sliderBounds.min || 0;
@@ -70,29 +68,15 @@ export default function ActionPanel({
   };
 
   return (
-    <div className="space-y-2 rounded-xl border border-white/20 bg-black/70 p-2.5 backdrop-blur-md">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-black/75 px-4 py-1.5 text-xs font-semibold text-white backdrop-blur">
-          <span>To Call: {legal.toCall}</span>
-          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${timeRemaining <= 5 ? 'bg-rose-500/55 text-rose-100' : 'bg-emerald-500/55 text-emerald-100'}`}>
-            {timeRemaining}s
-          </span>
-        </div>
-      </div>
+    <div className="flex flex-col items-end gap-2">
+      <p className="text-right text-xs font-semibold uppercase tracking-[0.16em] text-white/85">To Call: {legal.toCall}</p>
 
-      <div className="h-1.5 overflow-hidden rounded-full border border-white/30 bg-black/65">
-        <div
-          className={`h-full transition-[width] duration-150 ${timeRemaining <= 5 ? 'bg-rose-400' : 'bg-emerald-400'}`}
-          style={{ width: `${timerProgress * 100}%` }}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="flex flex-wrap justify-end gap-2">
         <button
           type="button"
           disabled={disabled || !legal.available.includes('fold')}
           onClick={() => onAction({ type: 'fold' })}
-          className="rounded-full border border-rose-300/70 bg-rose-600/60 px-3 py-2 text-sm font-semibold text-rose-100 hover:bg-rose-500/75 disabled:cursor-not-allowed disabled:opacity-45"
+          className="min-w-[102px] rounded-full border border-rose-300/70 bg-rose-600/70 px-4 py-2 text-sm font-semibold text-rose-100 hover:bg-rose-500/85 disabled:cursor-not-allowed disabled:opacity-45"
         >
           Fold
         </button>
@@ -102,7 +86,7 @@ export default function ActionPanel({
             type="button"
             disabled={disabled}
             onClick={() => onAction({ type: 'check' })}
-            className="rounded-full border border-sky-300/70 bg-sky-600/55 px-3 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-500/75 disabled:cursor-not-allowed disabled:opacity-45"
+            className="min-w-[102px] rounded-full border border-sky-300/70 bg-sky-600/70 px-4 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-500/85 disabled:cursor-not-allowed disabled:opacity-45"
           >
             Check
           </button>
@@ -111,7 +95,7 @@ export default function ActionPanel({
             type="button"
             disabled={disabled || !legal.available.includes('call')}
             onClick={() => onAction({ type: 'call' })}
-            className="rounded-full border border-sky-300/70 bg-sky-600/55 px-3 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-500/75 disabled:cursor-not-allowed disabled:opacity-45"
+            className="min-w-[102px] rounded-full border border-sky-300/70 bg-sky-600/70 px-4 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-500/85 disabled:cursor-not-allowed disabled:opacity-45"
           >
             Call {legal.toCall}
           </button>
@@ -122,7 +106,7 @@ export default function ActionPanel({
             type="button"
             disabled={disabled}
             onClick={() => onAction({ type: mode, amount })}
-            className="rounded-full border border-emerald-300/70 bg-emerald-600/60 px-3 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/75 disabled:cursor-not-allowed disabled:opacity-45"
+            className="min-w-[126px] rounded-full border border-emerald-300/70 bg-emerald-600/72 px-4 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/85 disabled:cursor-not-allowed disabled:opacity-45"
           >
             {mode === 'raise' ? `Raise ${amount}` : `Bet ${amount}`}
           </button>
@@ -130,7 +114,7 @@ export default function ActionPanel({
           <button
             type="button"
             disabled
-            className="rounded-full border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white/50"
+            className="min-w-[126px] rounded-full border border-white/20 bg-black/55 px-4 py-2 text-sm font-semibold text-white/50"
           >
             Raise
           </button>
@@ -140,15 +124,15 @@ export default function ActionPanel({
           type="button"
           disabled={disabled || !legal.available.includes('all-in')}
           onClick={() => onAction({ type: 'all-in' })}
-          className="rounded-full border border-amber-300/70 bg-amber-500/60 px-3 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-500/75 disabled:cursor-not-allowed disabled:opacity-45"
+          className="min-w-[102px] rounded-full border border-amber-300/70 bg-amber-500/70 px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-500/85 disabled:cursor-not-allowed disabled:opacity-45"
         >
           All-in
         </button>
       </div>
 
       {showSizeControls ? (
-        <div className="rounded-xl border border-white/20 bg-black/60 p-2.5 backdrop-blur">
-          <div className="mb-2 flex flex-wrap gap-2">
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-wrap justify-end gap-1.5">
             {quickSizes.map((size) => (
               <button
                 key={`${size.label}-${size.value}`}
@@ -157,8 +141,8 @@ export default function ActionPanel({
                 onClick={() => setAmount(size.value)}
                 className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
                   amount === size.value
-                    ? 'border-emerald-300/60 bg-emerald-400/25 text-emerald-50'
-                    : 'border-white/20 bg-white/5 text-white/80 hover:bg-white/10'
+                    ? 'border-emerald-300/80 bg-emerald-500/45 text-emerald-50'
+                    : 'border-white/25 bg-black/70 text-white/90 hover:bg-black/55'
                 } disabled:cursor-not-allowed disabled:opacity-45`}
               >
                 {size.label}
@@ -166,7 +150,7 @@ export default function ActionPanel({
             ))}
           </div>
 
-          <div className="mb-2 flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <input
               type="number"
               min={sliderBounds.min}
@@ -174,34 +158,34 @@ export default function ActionPanel({
               step="1"
               value={amount}
               onChange={(event) => setAmount(clampToBounds(Number(event.target.value)))}
-              className="w-32 rounded-lg border border-white/30 bg-black/70 px-2.5 py-1.5 text-sm font-semibold text-white outline-none focus:border-emerald-300"
+              className="w-28 rounded-lg border border-white/30 bg-black/85 px-2 py-1.5 text-sm font-semibold text-white outline-none focus:border-emerald-300"
               disabled={disabled}
             />
             <button
               type="button"
               onClick={() => setAmount(clampToBounds(amount))}
               disabled={disabled}
-              className="rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-45"
+              className="rounded-lg border border-white/25 bg-black/75 px-3 py-1.5 text-xs font-semibold text-white hover:bg-black/60 disabled:cursor-not-allowed disabled:opacity-45"
             >
               Set Amount
             </button>
-          </div>
 
-          <div>
-            <div className="mb-1 flex justify-between text-[11px] text-white/70">
-              <span>Min {sliderBounds.min}</span>
-              <span>{mode === 'raise' ? `Current ${tableState.currentBet}` : 'Bet sizing'}</span>
-              <span>Max {sliderBounds.max}</span>
+            <div className="min-w-[210px]">
+              <div className="mb-1 flex justify-between text-[11px] text-white/75">
+                <span>Min {sliderBounds.min}</span>
+                <span>{mode === 'raise' ? `Current ${tableState.currentBet}` : 'Bet'}</span>
+                <span>Max {sliderBounds.max}</span>
+              </div>
+              <input
+                type="range"
+                min={sliderBounds.min}
+                max={sliderBounds.max}
+                value={amount}
+                onChange={(event) => setAmount(Number(event.target.value))}
+                className="h-2 w-full cursor-pointer accent-emerald-400"
+                disabled={disabled}
+              />
             </div>
-            <input
-              type="range"
-              min={sliderBounds.min}
-              max={sliderBounds.max}
-              value={amount}
-              onChange={(event) => setAmount(Number(event.target.value))}
-              className="h-2 w-full cursor-pointer accent-emerald-400"
-              disabled={disabled}
-            />
           </div>
         </div>
       ) : null}

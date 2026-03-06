@@ -294,11 +294,12 @@ export default function PokerTablePage() {
           <InfoPill label="Current Bet" value={game.currentBet} />
         </div>
 
-        <div ref={tableHostRef} className="relative">
+        <div ref={tableHostRef} className={`relative ${isFullscreen ? 'h-screen w-screen bg-[#04070c]' : ''}`}>
           <PokerTableCanvas
             table={tableView}
             animationKey={animationKey}
             isFullscreen={isFullscreen}
+            playerTimerProgress={heroTurn ? playerClock / PLAYER_ACTION_SECONDS : 1}
             onToggleFullscreen={handleToggleFullscreen}
             actionArea={
               heroTurn ? (
@@ -306,7 +307,6 @@ export default function PokerTablePage() {
                   legal={legal}
                   onAction={handleAction}
                   disabled={false}
-                  timeRemaining={playerClock}
                   tableState={{ pot: game.pot, currentBet: game.currentBet }}
                 />
               ) : (

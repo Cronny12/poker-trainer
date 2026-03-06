@@ -17,11 +17,12 @@ export default function PokerTableCanvas({
   animationKey,
   actionArea,
   onToggleFullscreen,
-  isFullscreen
+  isFullscreen,
+  playerTimerProgress
 }) {
   const players = useMemo(() => [...table.players].sort((a, b) => a.seat - b.seat), [table.players]);
   return (
-    <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[#04070c] p-2 sm:p-4">
+    <div className={`relative overflow-hidden rounded-[28px] border border-white/10 bg-[#04070c] p-2 sm:p-4 ${isFullscreen ? 'h-full' : ''}`}>
       <button
         type="button"
         onClick={onToggleFullscreen}
@@ -32,10 +33,10 @@ export default function PokerTableCanvas({
 
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,rgba(255,255,255,0.09),transparent_40%),radial-gradient(circle_at_20%_10%,rgba(29,122,87,0.2),transparent_38%),linear-gradient(180deg,#05070d_0%,#111827_100%)]" />
 
-      <div className={`relative mx-auto w-full ${isFullscreen ? 'max-w-none' : 'max-w-[1180px]'}`}>
-        <div className={`relative aspect-[16/9] ${isFullscreen ? 'h-[calc(100vh-2.2rem)] min-h-0' : 'min-h-[430px] sm:min-h-[560px]'}`}>
-          <div className="absolute inset-[2.4%] rounded-[999px] bg-[#0b1117] shadow-[inset_0_10px_50px_rgba(255,255,255,0.07),inset_0_-20px_60px_rgba(0,0,0,0.8),0_20px_45px_rgba(0,0,0,0.65)]" />
-          <div className="absolute inset-[5.4%] rounded-[999px] border border-emerald-400/12 bg-[radial-gradient(ellipse_at_center,rgba(27,124,81,0.95)_0%,rgba(14,90,58,0.96)_52%,rgba(8,56,37,0.98)_100%)] shadow-[inset_0_0_120px_rgba(0,0,0,0.42)]" />
+      <div className={`relative mx-auto w-full ${isFullscreen ? 'flex h-full items-center justify-center max-w-none' : 'max-w-[1180px]'}`}>
+        <div className={`relative aspect-[16/9] ${isFullscreen ? 'w-[min(96vw,calc((100vh-2.2rem)*1.7778))] min-h-0' : 'min-h-[430px] sm:min-h-[560px]'}`}>
+          <div className="absolute inset-[2.4%] rounded-[999px] border border-[#f5d6af]/55 bg-[radial-gradient(ellipse_at_center,#d7b48a_0%,#a47d5d_45%,#5d3f2d_100%)] shadow-[inset_0_8px_34px_rgba(255,245,220,0.28),inset_0_-18px_40px_rgba(35,18,10,0.72),0_20px_45px_rgba(0,0,0,0.72)]" />
+          <div className="absolute inset-[5.4%] rounded-[999px] border border-emerald-300/20 bg-[radial-gradient(ellipse_at_center,rgba(31,140,92,0.95)_0%,rgba(16,92,61,0.97)_52%,rgba(8,49,34,0.99)_100%)] shadow-[inset_0_0_120px_rgba(0,0,0,0.46)]" />
           <div className="pointer-events-none absolute inset-[5.4%] rounded-[999px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]" />
 
           <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 text-center">
@@ -55,6 +56,8 @@ export default function PokerTableCanvas({
               player={player}
               layout={SEAT_LAYOUT[player.seat] || SEAT_LAYOUT[1]}
               animationKey={animationKey}
+              heroTimerProgress={player.isHero ? playerTimerProgress : 1}
+              heroHandName={player.isHero ? table.heroHandName : ''}
             />
           ))}
 
@@ -63,19 +66,16 @@ export default function PokerTableCanvas({
             label={table.winnerLabel}
           />
 
-          {isFullscreen ? (
-            <p className="pointer-events-none absolute bottom-[17%] right-[6%] z-40 text-right text-xs font-semibold text-white/85">
-              Current Hand: <span className="text-amber-200">{table.heroHandName}</span>
-            </p>
-          ) : null}
-
-          {actionArea ? (
-            <div className="absolute bottom-[4%] left-1/2 z-40 w-[94%] max-w-[920px] -translate-x-1/2">
-              {actionArea}
-            </div>
-          ) : null}
         </div>
       </div>
+
+      {actionArea ? (
+        <div
+          className={`absolute z-40 w-[min(94vw,560px)] ${isFullscreen ? 'bottom-4 right-4' : 'bottom-[5%] right-[4%]'}`}
+        >
+          {actionArea}
+        </div>
+      ) : null}
     </div>
   );
 }
