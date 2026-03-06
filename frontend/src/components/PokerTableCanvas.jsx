@@ -1,192 +1,55 @@
 import { useMemo } from 'react';
-import { formatCard } from '../game/engine';
+import CommunityCards from './CommunityCards';
+import Seat from './Seat';
+import WinnerOverlay from './WinnerOverlay';
 
 const SEAT_LAYOUT = {
-  1: { seat: { x: 50, y: 88 }, cards: { x: 50, y: 73 }, labelAlign: 'center' },
-  2: { seat: { x: 18, y: 74 }, cards: { x: 26, y: 64 }, labelAlign: 'left' },
-  3: { seat: { x: 12, y: 44 }, cards: { x: 22, y: 44 }, labelAlign: 'left' },
-  4: { seat: { x: 50, y: 16 }, cards: { x: 50, y: 26 }, labelAlign: 'center' },
-  5: { seat: { x: 88, y: 44 }, cards: { x: 78, y: 44 }, labelAlign: 'right' },
-  6: { seat: { x: 82, y: 74 }, cards: { x: 74, y: 64 }, labelAlign: 'right' }
+  1: { seat: { x: 50, y: 88 }, cards: { x: 50, y: 77 }, align: 'center' },
+  2: { seat: { x: 16, y: 69 }, cards: { x: 24, y: 62 }, align: 'left' },
+  3: { seat: { x: 16, y: 28 }, cards: { x: 25, y: 34 }, align: 'left' },
+  4: { seat: { x: 50, y: 10 }, cards: { x: 50, y: 20 }, align: 'center' },
+  5: { seat: { x: 84, y: 28 }, cards: { x: 75, y: 34 }, align: 'right' },
+  6: { seat: { x: 84, y: 69 }, cards: { x: 76, y: 62 }, align: 'right' }
 };
 
-export default function PokerTableCanvas({ game, animationKey }) {
-  const players = useMemo(() => [...game.players].sort((a, b) => a.seat - b.seat), [game.players]);
-  const shownCommunity = visibleCommunityCount(game.stage, game.handComplete, game.matchComplete);
-  const showdown = game.stage === 'showdown' || game.handComplete || game.matchComplete;
+export default function PokerTableCanvas({ table, animationKey }) {
+  const players = useMemo(() => [...table.players].sort((a, b) => a.seat - b.seat), [table.players]);
+  const winnerLayout = SEAT_LAYOUT[table.winnerSeat] || SEAT_LAYOUT[1];
 
   return (
-    <div className="table-shell">
-      <div className="table-outer">
-        <div className="table-felt" />
+    <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[#04070c] p-2 sm:p-4">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,rgba(255,255,255,0.09),transparent_40%),radial-gradient(circle_at_20%_10%,rgba(29,122,87,0.2),transparent_38%),linear-gradient(180deg,#05070d_0%,#111827_100%)]" />
 
-        <div className="table-center">
-          <p className="table-pot">POT {game.pot}</p>
-          <p className="table-stage">{formatStage(game.stage)}</p>
+      <div className="relative mx-auto w-full max-w-[1180px]">
+        <div className="relative aspect-[16/9] min-h-[430px] sm:min-h-[560px]">
+          <div className="absolute inset-[2.4%] rounded-[999px] bg-[#0b1117] shadow-[inset_0_10px_50px_rgba(255,255,255,0.07),inset_0_-20px_60px_rgba(0,0,0,0.8),0_20px_45px_rgba(0,0,0,0.65)]" />
+          <div className="absolute inset-[5.4%] rounded-[999px] border border-emerald-400/12 bg-[radial-gradient(ellipse_at_center,rgba(27,124,81,0.95)_0%,rgba(14,90,58,0.96)_52%,rgba(8,56,37,0.98)_100%)] shadow-[inset_0_0_120px_rgba(0,0,0,0.42)]" />
+          <div className="pointer-events-none absolute inset-[5.4%] rounded-[999px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]" />
 
-          <div className="community-row">
-            {Array.from({ length: 5 }).map((_, index) => {
-              const card = game.communityCards[index];
-              const visible = index < shownCommunity && card;
-              return (
-                <Card
-                  key={`community-${index}`}
-                  card={visible ? card : null}
-                  back={false}
-                  revealKey={`${animationKey}-community-${index}`}
-                  delay={index * 70}
-                  placeholder={!visible}
-                />
-              );
-            })}
+          <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 text-center">
+            <p className="mb-2 inline-flex rounded-full border border-emerald-300/25 bg-black/45 px-4 py-1 text-sm font-bold text-amber-200 shadow-[0_6px_20px_rgba(0,0,0,0.45)]">
+              Total Pot: {table.pot}
+            </p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-100/70">{table.stageLabel}</p>
+            <CommunityCards cards={table.communityCards} animationKey={animationKey} />
           </div>
-        </div>
 
-        {players.map((player) => {
-          const layout = SEAT_LAYOUT[player.seat] || SEAT_LAYOUT[1];
-          const isDealer = game.dealerIndex >= 0 && game.players[game.dealerIndex]?.id === player.id;
-          const isSb = game.sbIndex >= 0 && game.players[game.sbIndex]?.id === player.id;
-          const isBb = game.bbIndex >= 0 && game.players[game.bbIndex]?.id === player.id;
-          const isActing = game.actionIndex >= 0 && game.players[game.actionIndex]?.id === player.id;
-          const folded = player.folded;
-          const busted = player.stack <= 0;
-          const revealCards = player.isHuman || showdown;
-
-          return (
-            <div
+          {players.map((player) => (
+            <Seat
               key={player.id}
-              className={`seat ${isActing ? 'is-acting' : ''} ${busted ? 'is-busted' : ''}`}
-              style={{ left: `${layout.seat.x}%`, top: `${layout.seat.y}%` }}
-            >
-              <div className={`seat-box align-${layout.labelAlign}`}>
-                <div className="seat-name-row">
-                  <span className="seat-name">{player.name}</span>
-                  {isDealer ? <span className="marker marker-dealer">D</span> : null}
-                  {isSb ? <span className="marker marker-sb">SB</span> : null}
-                  {isBb ? <span className="marker marker-bb">BB</span> : null}
-                </div>
-                <p className="seat-stack">Stack: {player.stack}</p>
-                <p className="seat-bet">Bet: {player.currentBet}</p>
-                <p className="seat-state">{busted ? 'Busted' : folded ? 'Folded' : player.allIn ? 'All-in' : 'Active'}</p>
-              </div>
+              player={player}
+              layout={SEAT_LAYOUT[player.seat] || SEAT_LAYOUT[1]}
+              animationKey={animationKey}
+            />
+          ))}
 
-              <div
-                className={`hole-row align-${layout.labelAlign} ${folded ? 'is-folded' : ''}`}
-                style={{ left: `${layout.cards.x - layout.seat.x}%`, top: `${layout.cards.y - layout.seat.y}%` }}
-              >
-                <Card
-                  card={revealCards ? player.holeCards?.[0] : null}
-                  back={!revealCards && Boolean(player.holeCards?.[0])}
-                  revealKey={`${animationKey}-${player.id}-0`}
-                  delay={0}
-                />
-                <Card
-                  card={revealCards ? player.holeCards?.[1] : null}
-                  back={!revealCards && Boolean(player.holeCards?.[1])}
-                  revealKey={`${animationKey}-${player.id}-1`}
-                  delay={80}
-                />
-              </div>
-
-              {player.currentBet > 0 ? (
-                <div className="bet-chip">{player.currentBet}</div>
-              ) : null}
-            </div>
-          );
-        })}
+          <WinnerOverlay
+            show={table.showWinnerOverlay}
+            label={table.winnerLabel}
+            position={winnerLayout.cards}
+          />
+        </div>
       </div>
     </div>
   );
-}
-
-function Card({ card, back, revealKey, delay, placeholder = false }) {
-  const style = {
-    animationDelay: `${delay}ms`
-  };
-
-  if (placeholder) {
-    return <div className="card card-placeholder" />;
-  }
-
-  if (!card && !back) {
-    return <div className="card card-hidden" />;
-  }
-
-  if (back) {
-    return (
-      <div key={revealKey} className="card card-back deal-in" style={style}>
-        <div className="card-back-inner" />
-      </div>
-    );
-  }
-
-  if (!card) {
-    return <div className="card card-hidden" />;
-  }
-
-  const rank = card[0] === 'T' ? '10' : card[0];
-  const suit = suitSymbol(card[1]);
-  const red = card[1] === 'h' || card[1] === 'd';
-
-  return (
-    <div key={revealKey} className="card card-face deal-in" style={style}>
-      <span className={`card-corner ${red ? 'red' : 'black'}`}>
-        {rank}
-        <br />
-        {suit}
-      </span>
-      <span className={`card-center ${red ? 'red' : 'black'}`}>{formatCard(card).replace(rank, '').trim() || suit}</span>
-    </div>
-  );
-}
-
-function suitSymbol(suit) {
-  if (suit === 's') {
-    return '♠';
-  }
-  if (suit === 'h') {
-    return '♥';
-  }
-  if (suit === 'd') {
-    return '♦';
-  }
-  return '♣';
-}
-
-function visibleCommunityCount(stage, handComplete, matchComplete) {
-  if (handComplete || matchComplete || stage === 'showdown') {
-    return 5;
-  }
-  if (stage === 'river') {
-    return 5;
-  }
-  if (stage === 'turn') {
-    return 4;
-  }
-  if (stage === 'flop') {
-    return 3;
-  }
-  return 0;
-}
-
-function formatStage(stage) {
-  if (stage === 'preflop') {
-    return 'Preflop';
-  }
-  if (stage === 'flop') {
-    return 'Flop (Post-Flop)';
-  }
-  if (stage === 'turn') {
-    return 'Turn (Post-Flop)';
-  }
-  if (stage === 'river') {
-    return 'River (Final Betting)';
-  }
-  if (stage === 'showdown') {
-    return 'Showdown';
-  }
-  if (stage === 'match_over') {
-    return 'Match Over';
-  }
-  return stage;
 }
